@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>28 Card Game AI Table</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        .card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .card:hover {
+            transform: translateY(-15px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-white font-sans h-screen flex flex-col justify-between">
+
+    <header class="bg-slate-800 p-4 border-b border-slate-700 flex justify-between items-center shadow-md">
+        <h1 class="text-xl font-bold tracking-wider text-emerald-400">♦ 28 AI Arena ♦</h1>
+        <div class="flex gap-6 text-sm">
+            <div>Team A (You, Bot 2): <span id="scoreA" class="font-bold text-lg text-emerald-400">0</span></div>
+            <div>Team B (Bot 1, Bot 3): <span id="scoreB" class="font-bold text-lg text-rose-400">0</span></div>
+        </div>
+        <button id="btn-start" onclick="startGame()" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded font-semibold transition shadow">Start New Match</button>
+    </header>
+
+    <main class="flex-1 relative bg-radial from-emerald-900 to-emerald-950 flex flex-col items-center justify-center p-4">
+
+        <div id="bidding-panel" class="hidden absolute z-10 bg-slate-800/95 p-6 rounded-lg shadow-2xl border border-slate-600 max-w-sm text-center">
+            <h3 class="text-lg font-bold mb-4">Auction Phase</h3>
+            <p class="text-sm text-slate-300 mb-4">Bids scale from 14 to 28 points.</p>
+            <div class="flex gap-2 justify-center mb-4">
+                <input type="number" id="bid-val" min="14" max="28" value="15" class="bg-slate-700 text-white font-bold p-2 w-20 rounded border border-slate-500 text-center">
+                <button onclick="submitBid(document.getElementById('bid-val').value)" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded font-bold">Bid</button>
+                <button onclick="submitBid('pass')" class="bg-slate-600 hover:bg-slate-500 px-4 py-2 rounded font-bold">Pass</button>
+            </div>
+        </div>
+
+        <div class="w-full max-w-4xl h-full flex flex-col justify-between items-center py-6">
+
+            <div class="text-center">
+                <div class="bg-slate-800/80 px-3 py-1 rounded text-xs border border-slate-700">Bot 2 (Partner)</div>
+                <div id="trick-2" class="h-24 w-16 border-2 border-dashed border-emerald-700/50 rounded mt-2 flex items-center justify-center text-xl bg-slate-900/20"></div>
+            </div>
+
+            <div class="w-full flex justify-between items-center px-12">
+                <div class="text-center">
+                    <div class="bg-slate-800/80 px-3 py-1 rounded text-xs border border-slate-700">Bot 1</div>
+                    <div id="trick-1" class="h-24 w-16 border-2 border-dashed border-emerald-700/50 rounded mt-2 flex items-center justify-center text-xl bg-slate-900/20"></div>
+                </div>
+
+                <div class="bg-emerald-900/40 p-4 border border-emerald-500/20 rounded-xl flex flex-col items-center gap-2">
+                    <span id="board-info-status" class="text-xs tracking-widest text-emerald-400 font-mono">WAITING TO OPEN</span>
+                    <div id="trump-indicator" class="text-xs font-bold text-amber-400 bg-slate-800/90 px-3 py-1 rounded border border-amber-500/30 hidden">TRUMP: UNKNOWN</div>
+                </div>
+
+                <div class="text-center">
+                    <div class="bg-slate-800/80 px-3 py-1 rounded text-xs border border-slate-700">Bot 3</div>
+                    <div id="trick-3" class="h-24 w-16 border-2 border-dashed border-emerald-700/50 rounded mt-2 flex items-center justify-center text-xl bg-slate-900/20"></div>
+                </div>
+            </div>
+
+            <div class="text-center flex flex-col items-center">
+                <div id="trick-0" class="h-24 w-16 border-2 border-dashed border-emerald-700/50 rounded mb-2 flex items-center justify-center text-xl bg-slate-900/20"></div>
+                <div class="bg-slate-800/80 px-3 py-1 rounded text-xs border border-slate-700">Your Play Mat</div>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="bg-slate-950 border-t border-slate-800 p-6 flex flex-col items-center gap-4 shadow-inner">
+        <div id="hand-cards" class="flex gap-3 justify-center items-center overflow-x-auto py-2 px-6 max-w-5xl">
+            </div>
+    </footer>
+
+    <script>
+        const suitSymbols = {'Hearts': '♥️', 'Diamonds': '♦️', 'Clubs': '♣️', 'Spades': '♠️'};
+        const suitColors = {'Hearts': 'text-rose-500', 'Diamonds': 'text-sky-400', 'Clubs': 'text-emerald-400', 'Spades': 'text-slate-400'};
+
+        async function startGame() {
+            const res = await fetch('/api/init', { method: 'POST' });
+            const data = await res.json();
+            renderHand(data.hand);
+            document.getElementById('bidding-panel').classList.remove('hidden');
+        }
+
+        function renderHand(hand) {
+            const tray = document.getElementById('hand-cards');
+            tray.innerHTML = '';
+            hand.forEach(card => {
+                const isRed = card.suit === 'Hearts' || card.suit === 'Diamonds';
+                const colorClass = isRed ? 'text-red-500' : 'text-slate-200';
+
+                const cardEl = document.createElement('button');
+                cardEl.className = `card w-20 h-28 bg-white ${colorClass} rounded-lg border border-slate-300 font-bold flex flex-col justify-between p-2 shadow-md cursor-pointer select-none shrink-0`;
+                cardEl.innerHTML = `
+                    <div class="text-left text-sm">${card.value}</div>
+                    <div class="text-center text-2xl">${suitSymbols[card.suit] || card.suit}</div>
+                    <div class="text-right text-sm">${card.value}</div>
+                `;
+                tray.appendChild(cardEl);
+            });
+        }
+
+        async function submitBid(bidVal) {
+            document.getElementById('bidding-panel').classList.add('hidden');
+            const res = await fetch('/api/submit_bid', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bid: bidVal })
+            });
+            const data = await res.json();
+
+            document.getElementById('board-info-status').innerText = `CALL: ${data.highest_bid} BY P${data.point_caller}`;
+            renderHand(data.hand);
+        }
+    </script>
+</body>
+</html>
