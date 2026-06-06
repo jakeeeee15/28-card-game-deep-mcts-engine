@@ -33,10 +33,10 @@ Where:
 ---
 
 ## 🛠️ Repository & System Architecture
-├── Game_layout.py         # Core engine rule layer, tracking, deep cloning, and deterministic state tracking
-├── mcts_planner.py        # Asynchronous MCTS controller loop containing node maps and UCT selection
-├── model.py               # PyTorch implementation of the policy-value network architecture
-└── test_mcts.py           # Standalone terminal-based benchmarking and execution verification sandbox
+* ├── Game_layout.py         # Core engine rule layer, tracking, deep cloning, and deterministic state tracking
+* ├── mcts_planner.py        # Asynchronous MCTS controller loop containing node maps and UCT selection
+* ├── model.py               # PyTorch implementation of the policy-value network architecture
+* └── test_mcts.py           # Standalone terminal-based benchmarking and execution verification sandbox
 ### Strategic Action Optimization
 The engine utilizes a deterministic action mask inside `Player.get_the_possible_actions()` to catch edge cases unique to 28's ruleset:
 1. **Lead Suit Enforcement:** Restricts the searchable action space if the player can follow the active trick's lead suit.
